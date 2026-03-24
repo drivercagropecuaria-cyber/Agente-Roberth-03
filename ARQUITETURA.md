@@ -1,149 +1,205 @@
-# ARQUITETURA DO SISTEMA — ORBIT
+# ARQUITETURA ORBIT 2026 — Revisada e Expandida
+# Atualizado em: 24/03/2026 — incorpora análise crítica de arquitetura avançada
 
-## Visão Geral em Camadas
+## Diagnóstico da Arquitetura Anterior
+
+A arquitetura v1 era um encadeamento linear de agentes (1→2→3→4→5→6).
+Funcionava como protótipo inteligente, mas tinha limitações críticas para produção:
+
+| Problema | Impacto |
+|---------|---------|
+| Sem classificação de intenção/profundidade | Todo pedido recebe o mesmo ritual completo |
+| Orquestrador misturava controle e execução | Fragilidade, difícil retomar após falha |
+| Pesquisa como bloco único paralelo | Sem contrato de evidência comum, sem normalização |
+| Score único 7/10 | Sem diagnóstico de qual dimensão falhou |
+| Memória plana | Sem episódica, semântica, procedural |
+| Sem interrupção humana nativa | Aprovação não é primitivo, é gambiarra |
+| Logs soltos | Sem rastreabilidade correlacionada por job/agent/evidence |
+
+---
+
+## Arquitetura ORBIT 2026 — 11 Camadas Vivas
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    CAMADA DE ENTRADA                    │
-│          Telegram Bot  |  Dashboard Web                 │
-└────────────────────────┬────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────┐
-│                  CAMADA DE RECEPÇÃO                     │
-│    Webhook Handler  |  API Gateway  |  Command Parser   │
-└────────────────────────┬────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────┐
-│                 CAMADA DE ORQUESTRAÇÃO                  │
-│           Agente Orquestrador (OpenAI SDK)              │
-│     Handoffs | Quality Gates | Session Management       │
-└──┬──────────┬──────────┬──────────┬────────────────────-┘
-   │          │          │          │
-┌──▼──┐  ┌───▼───┐  ┌───▼──┐  ┌───▼──────────┐
-│PESQ │  │PESQ   │  │PESQ  │  │  ANÁLISE     │
-│WEB  │  │SOCIAL │  │ACAD  │  │              │
-└──┬──┘  └───┬───┘  └───┬──┘  └───┬──────────┘
-   └─────────┴──────────┴─────────┘
-                         │
-┌────────────────────────▼────────────────────────────────┐
-│              CAMADA DE DOCUMENTAÇÃO                     │
-│        Agente Criador de Dossiês                        │
-└────────────────────────┬────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────┐
-│              CAMADA DE APRESENTAÇÃO                     │
-│        Agente Criador de Apresentações HTML             │
-└────────────────────────┬────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────┐
-│              CAMADA DE QUALIDADE                        │
-│        Agente Revisor de Qualidade                      │
-│        Quality Gates | Thresholds | Retry               │
-└────────────────────────┬────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────┐
-│               CAMADA DE PERSISTÊNCIA                    │
-│  Supabase PostgreSQL | Storage | pgmq Queues | Realtime │
-└────────────────────────┬────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────┐
-│             CAMADA DE OBSERVABILIDADE                   │
-│         Tracing | Logs | Métricas | Alertas             │
-└────────────────────────┬────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────┐
-│             DASHBOARD / STUDIO                          │
-│  Jobs | Dossiês | Apresentações | Fontes | SWOT | QA   │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  CAMADA 1 — ENTRADA                                              │
+│  Telegram Bot | Dashboard Web | API Pública                      │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────────────┐
+│  CAMADA 2 — INTAKE ROUTER + POLICY & BUDGET GATE                │
+│  • Classificador de intenção (risco, urgência, profundidade)     │
+│  • Orçamento de tokens/custo por tipo de pedido                  │
+│  • Roteamento: resposta rápida | pesquisa | dossiê | apresentação│
+│  • Bloqueio de ações que requerem aprovação humana               │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────────────┐
+│  CAMADA 3 — PLANNER / ORQUESTRADOR (Control Plane)              │
+│  Produz plano DECLARATIVO:                                       │
+│  • objetivo, subtarefas, fontes permitidas                       │
+│  • limite de custo, prazo, regras de citação                     │
+│  • critérios de qualidade, condições de parada                   │
+│  • largura adaptativa: 3 ramos (simples) → 24 ramos (dossiê)    │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────────────┐
+│  CAMADA 4 — WORKFLOW RUNTIME DURÁVEL (Execution Plane)          │
+│  • Executa o plano com filas, checkpoints, retries               │
+│  • Estado persistido no Supabase (execution_checkpoints)         │
+│  • Suporte a pause/resume/retry por checkpoint                   │
+│  • Interrupções humanas nativas (interrupt → Telegram → resume)  │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────────────┐
+│  CAMADA 5 — RETRIEVAL FABRIC (Fan-out Adaptativo)               │
+│  Adaptadores com contrato comum: query, filters, freshness,      │
+│  source_quality, license, evidence_type                          │
+│  • Web Search (OpenAI nativo)                                    │
+│  • Social (Reddit, fóruns)                                       │
+│  • Acadêmico (OpenAlex, Semantic Scholar)                        │
+│  • Arquivos internos (File Search)                               │
+│  • Knowledge Base interna (busca híbrida: keyword + semântica)  │
+│  • MCP servers remotos (protocolo comum)                         │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────────────┐
+│  CAMADA 6 — NORMALIZADOR DE EVIDÊNCIAS                          │
+│  Cada resultado → formato canônico:                              │
+│  { claim, source, timestamp, confidence, quote, url,             │
+│    contradictions, topic_tags, evidence_class }                  │
+│  → Grafo de Evidências (conflitos, duplicatas, lacunas)          │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────────────┐
+│  CAMADA 7 — SYNTHESIZER                                         │
+│  • Tese central, eixos, divergências                             │
+│  • Conclusões com incertezas quantificadas                       │
+│  • SWOT estruturado                                              │
+│  Separado do Artifact Generator: "pensar ≠ formatar"            │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────────────┐
+│  CAMADA 8 — ARTIFACT GENERATOR                                  │
+│  Do mesmo núcleo de evidência, gera múltiplos formatos:         │
+│  • Dossiê HTML premium                                           │
+│  • Resumo Telegram (4096 chars max)                              │
+│  • Briefing executivo (PDF/texto)                                │
+│  • Dashboard card (JSON estruturado)                             │
+│  • Memória persistente (knowledge_base)                          │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────────────┐
+│  CAMADA 9 — QA MULTIDIMENSIONAL + REPAIR LOOP                  │
+│  Scorecard por eixo (0-10 cada):                                │
+│  factualidade | cobertura | recência | qualidade_fontes          │
+│  coerência | rastreabilidade | utilidade | custo | latência      │
+│                                                                  │
+│  Repair Loop:                                                    │
+│  factualidade falhou → volta para evidência                      │
+│  cobertura falhou → reabre pesquisa                              │
+│  clareza falhou → reescreve o artefato                           │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────────────┐
+│  CAMADA 10 — MEMÓRIA EM 4 NÍVEIS                                │
+│  • Execução: estado do job atual (execution_checkpoints)         │
+│  • Episódica: casos anteriores parecidos (conversation_memory)   │
+│  • Semântica: fatos/entidades consolidados (semantic_entities)   │
+│  • Procedural: como resolver tarefas similares (directives)      │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────────────┐
+│  CAMADA 11 — OBSERVABILIDADE + GOVERNANÇA                       │
+│  • OpenTelemetry: traces, metrics, logs correlacionados          │
+│  • Correlação: job_id, run_id, agent_id, tool_id, evidence_id   │
+│  • Política de execução (fontes, dados, aprovação, orçamento)    │
+│  • Classificação de sensibilidade                                │
+│  • Retenção de artefatos                                         │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │
+              ┌────────────▼────────────┐
+              │   PERSISTÊNCIA          │
+              │   Supabase (tudo)       │
+              │   26 tabelas + vetores  │
+              │   Storage + pgmq        │
+              └────────────┬────────────┘
+                           │
+              ┌────────────▼────────────┐
+              │   SAÍDA                 │
+              │   Telegram + Dashboard  │
+              │   Cockpit de Evidência  │
+              └─────────────────────────┘
 ```
 
 ---
 
-## Stack Técnica
+## O que Muda no Código — Impacto por Camada
 
-### Backend
-| Componente | Tecnologia | Justificativa |
-|-----------|-----------|---------------|
-| Runtime | Node.js (TypeScript) | Ecossistema rico, OpenAI SDK oficial |
-| Framework | Fastify | Performance, schema nativo, plugins |
-| Agentes | OpenAI Agents SDK (JS) | Handoffs, tracing, guardrails nativos |
-| Filas | Supabase pgmq | Durabilidade, sem infra extra |
-| Jobs worker | Worker separado | Desacoplamento, resiliência |
+### Camada 2 — Intake Router (NOVO)
+Arquivo: `src/services/intake-router.ts`
+- Classificar intenção via LLM leve (gpt-4o-mini)
+- Decidir: quick_answer | research | dossier | presentation
+- Definir: max_tokens, max_sources, max_branches, deadline
 
-### Frontend
-| Componente | Tecnologia | Justificativa |
-|-----------|-----------|---------------|
-| Framework | React + Vite + TypeScript | Padrão moderno, performance |
-| Estilo | Tailwind CSS | Utilidades, consistência visual |
-| UI Components | shadcn/ui | Componentes acessíveis e customizáveis |
-| Estado | React Query + Zustand | Cache, estado global simples |
-| Realtime | Supabase Realtime | Updates ao vivo no dashboard |
-| Roteamento | React Router v6 | SPA com múltiplas rotas |
+### Camada 3 — Planner separado do Orquestrador (REFATORAR)
+Arquivo: `src/agents/planner.ts` (separado de orchestrator.ts)
+- Output: DeclarativePlan (JSON estruturado com regras)
+- Orquestrador passa a ser executor do plano, não criador
 
-### Banco de Dados
-| Componente | Tecnologia | Justificativa |
-|-----------|-----------|---------------|
-| Principal | Supabase (PostgreSQL) | Dados estruturados, RLS, Auth |
-| Storage | Supabase Storage | Artifacts, apresentações HTML |
-| Filas | pgmq (via Supabase) | Jobs duráveis, retry nativo |
-| Realtime | Supabase Realtime | Updates em tempo real |
+### Camada 5 — Retrieval Fabric com contrato comum (EXPANDIR)
+Arquivo: `src/retrieval/` (pasta nova)
+- `adapters/web.ts`, `adapters/social.ts`, `adapters/scholarly.ts`
+- `adapters/knowledge-base.ts` (busca híbrida interna)
+- Contrato: `EvidenceSource { query, url, snippet, quality, license, freshness }`
 
-### Integrações
-| Integração | Uso |
-|-----------|-----|
-| OpenAI API | Agentes, GPT-4o, web search nativo |
-| Telegram Bot API | Canal de entrada principal |
-| OpenAI File Search | Busca em documentos indexados |
+### Camada 6 — Evidence Normalizer (NOVO)
+Arquivo: `src/services/evidence-normalizer.ts`
+- Converter qualquer fonte para `EvidenceClaim`
+- Detectar conflitos, duplicatas e lacunas
+- Persistir em `evidence_store`
+
+### Camada 7+8 — Synthesizer separado do Artifact Generator (REFATORAR)
+- `src/agents/synthesizer.ts` → produz SynthesisCore
+- `src/agents/artifact-generator.ts` → transforma em múltiplos formatos
+
+### Camada 9 — QA Multidimensional (EXPANDIR)
+Arquivo: `src/agents/quality-reviewer.ts` (expandir)
+- 9 dimensões em vez de score único
+- Repair loop por dimensão com agente responsável
+
+### Camada 10 — Memória em 4 Níveis (USAR SCHEMA)
+- Já existe no Supabase: execution_checkpoints, conversation_memory, semantic_entities, directives
+- Implementar serviço de memória: `src/services/memory.ts`
+
+### Camada 11 — Observabilidade (NOVO)
+Arquivo: `src/utils/telemetry.ts`
+- Wrapper sobre console.log atual
+- Adicionar correlação por job_id/agent/step
+- Preparado para exportar OTel no futuro
 
 ---
 
-## Estrutura de Diretórios do Aplicativo
+## O que SE MANTÉM (stack atual é sólido)
 
-```
-orbit/
-├── backend/                    # Backend Node.js + TypeScript
-│   ├── src/
-│   │   ├── agents/             # Agentes OpenAI SDK
-│   │   │   ├── orchestrator.ts
-│   │   │   ├── research.ts
-│   │   │   ├── social-research.ts
-│   │   │   ├── scholarly-research.ts
-│   │   │   ├── analysis.ts
-│   │   │   ├── dossier.ts
-│   │   │   ├── presentation.ts
-│   │   │   └── quality-review.ts
-│   │   ├── api/                # Rotas Fastify
-│   │   │   ├── webhook.ts      # Telegram webhook
-│   │   │   ├── jobs.ts         # CRUD de jobs
-│   │   │   ├── dossiers.ts     # CRUD de dossiês
-│   │   │   └── presentations.ts
-│   │   ├── contracts/          # Schemas/contratos de dados
-│   │   │   └── index.ts
-│   │   ├── db/                 # Supabase client + queries
-│   │   │   ├── client.ts
-│   │   │   └── queries.ts
-│   │   ├── queue/              # pgmq worker
-│   │   │   └── worker.ts
-│   │   ├── services/           # Lógica de negócio
-│   │   └── utils/
-│   ├── package.json
-│   └── tsconfig.json
-│
-├── frontend/                   # React + Vite + Tailwind
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── Dashboard.tsx
-│   │   │   ├── Jobs.tsx
-│   │   │   ├── Dossiers.tsx
-│   │   │   ├── Presentations.tsx
-│   │   │   └── Studio.tsx
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   └── lib/
-│   └── package.json
-│
-└── banco/                      # SQL migrations Supabase
-    ├── 001_schema_inicial.sql
-    ├── 002_filas.sql
-    └── 003_rls.sql
-```
+| Componente | Decisão |
+|-----------|---------|
+| Supabase | ✅ Mantém — banco, storage, pgmq, vetores, realtime |
+| Fastify | ✅ Mantém — webhook, REST API |
+| OpenAI Agents SDK | ✅ Mantém — agentes, handoffs, tools |
+| Telegram | ✅ Mantém — entrada principal |
+| React + Tailwind | ✅ Mantém — dashboard |
+
+---
+
+## Impacto no Plano de Implementação
+
+A Fase B incorpora Camadas 2, 3, 4, 5 da nova arquitetura.
+As Fases C e D constroem Camadas 6, 7, 8 e 9.
+A Fase F constrói Camadas 10 e 11.
+
+---
+
+## Princípio Adotado
+
+> "Menos agentes falando entre si, mais civilização de agentes operando sobre regras, memória e prova."

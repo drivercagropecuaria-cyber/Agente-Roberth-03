@@ -1,11 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
-import {
-  supabase,
-  upsertTelegramUser,
-  createCommand,
-  createJob,
-  logTrace
-} from '../db/client'
+import { supabase, upsertTelegramUser, createCommand, createJob, logTrace } from '../db/client'
+import { checkTelegramRateLimit, extractOrCreateCorrelationId } from '../middleware/security'
 
 interface TelegramUpdate {
   update_id: number
@@ -31,14 +26,18 @@ async function sendTelegramMessage(chatId: number, text: string) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
-  })
+  }).catch(() => {})
 }
 
 export async function webhookRoutes(app: FastifyInstance) {
-  // Endpoint que o Telegram chama a cada mensagem
+
   app.post(
     '/telegram',
     async (req: FastifyRequest<{ Body: TelegramUpdate }>, reply: FastifyReply) => {
+      // ── Correlation ID (rastreabilidade transversal) ──
+      const correlationId = extractOrCreateCorrelationId(req.headers as Record<string, unknown>)
+      reply.header('x-correlation-id', correlationId)
+
       const update = req.body
       const message = update.message
 
@@ -49,7 +48,15 @@ export async function webhookRoutes(app: FastifyInstance) {
       const chatId = message.chat.id
       const text = message.text.trim()
 
-      app.log.info({ telegramId: from.id, text }, 'Mensagem recebida')
+      // ── Rate Limit por chat_id (20 req/min) ──
+      const rateCheck = checkTelegramRateLimit(chatId)
+      if (!rateCheck.allowed) {
+        await sendTelegramMessage(chatId, rateCheck.message || '⏳ Aguarde antes de enviar outra solicitação.')
+        app.log.warn({ chatId, correlationId }, 'Rate limit atingido')
+        return reply.send({ ok: true })
+      }
+
+      app.log.info({ telegramId: from.id, text, correlationId }, 'Mensagem recebida')
 
       try {
         // 1. Upsert do perfil do usuário
@@ -62,7 +69,7 @@ export async function webhookRoutes(app: FastifyInstance) {
           chat_id: chatId
         })
 
-        // 2. Criar command
+        // 2. Criar command (inclui correlationId no payload)
         const command = await createCommand({
           userId: user.id,
           payload: {
@@ -71,78 +78,61 @@ export async function webhookRoutes(app: FastifyInstance) {
             chat_id: chatId,
             telegram_id: from.id,
             message_id: message.message_id,
-            received_at: new Date(message.date * 1000).toISOString()
+            received_at: new Date(message.date * 1000).toISOString(),
+            correlation_id: correlationId
           }
         })
 
         // 3. Criar job
-        const job = await createJob({
-          commandId: command.id,
-          chatId
-        })
+        const job = await createJob({ commandId: command.id, chatId })
 
         // 4. Enfileirar via RPC
         await supabase.rpc('push_intent_job', { p_job_id: job.id })
 
-        // 5. Registrar trace inicial
+        // 5. Registrar trace inicial com correlationId
         await logTrace({
           jobId: job.id,
           agentName: 'webhook',
           step: 'job_created',
           inputSummary: text.substring(0, 200),
-          outputSummary: `job_id=${job.id}`,
+          outputSummary: `job_id=${job.id} cid=${correlationId}`,
           status: 'ok'
         })
 
         // 6. Resposta imediata ao usuário
         await sendTelegramMessage(
           chatId,
-          `🔄 *Processando sua solicitação...*\n\nJob ID: \`${job.id.substring(0, 8)}...\`\nAguarde, estou pesquisando e analisando.`
+          `🔄 *Processando sua solicitação...*\n\nJob: \`${job.id.substring(0, 8)}...\`\nAguarde, estou pesquisando e analisando.`
         )
 
-        app.log.info({ jobId: job.id }, 'Job criado e enfileirado')
+        app.log.info({ jobId: job.id, correlationId }, 'Job criado e enfileirado')
+
       } catch (err) {
-        app.log.error(err, 'Erro ao processar mensagem Telegram')
-        await sendTelegramMessage(
-          chatId,
-          '❌ Ocorreu um erro ao processar sua solicitação. Tente novamente.'
-        ).catch(() => {})
+        app.log.error({ err, correlationId }, 'Erro ao processar mensagem Telegram')
+        await sendTelegramMessage(chatId, '❌ Ocorreu um erro. Tente novamente em instantes.').catch(() => {})
       }
 
       return reply.send({ ok: true })
     }
   )
 
-  // Rota para configurar o webhook no Telegram
+  // Configura webhook no Telegram
   app.get('/setup', async (_req, reply) => {
     const token = process.env.TELEGRAM_BOT_TOKEN
     const webhookUrl = process.env.WEBHOOK_URL
-
-    if (!token || !webhookUrl) {
-      return reply.status(400).send({
-        error: 'TELEGRAM_BOT_TOKEN e WEBHOOK_URL são obrigatórios'
-      })
-    }
-
-    const res = await fetch(
-      `https://api.telegram.org/bot${token}/setWebhook`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: `${webhookUrl}/webhook/telegram` })
-      }
-    )
-    const data = await res.json() as Record<string, unknown>
-    return reply.send(data)
+    if (!token || !webhookUrl) return reply.status(400).send({ error: 'TELEGRAM_BOT_TOKEN e WEBHOOK_URL são obrigatórios' })
+    const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: `${webhookUrl}/webhook/telegram` })
+    })
+    return reply.send(await res.json())
   })
 
-  // Verifica info do webhook configurado
+  // Info do webhook
   app.get('/info', async (_req, reply) => {
     const token = process.env.TELEGRAM_BOT_TOKEN
     if (!token) return reply.status(400).send({ error: 'TELEGRAM_BOT_TOKEN ausente' })
-
     const res = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`)
-    const data = await res.json() as Record<string, unknown>
-    return reply.send(data)
+    return reply.send(await res.json())
   })
 }

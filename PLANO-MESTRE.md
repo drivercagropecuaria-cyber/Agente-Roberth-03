@@ -1,119 +1,120 @@
 # PLANO MESTRE DE IMPLEMENTAÇÃO — ORBIT
-# Atualizado em: 24/03/2026
+# Atualizado em: 24/03/2026 — pós análise arquitetural v3
 
 ## Estado Atual do Sistema
 
-### Supabase
-| Projeto | Ref | Status | Schema |
-|---------|-----|--------|--------|
-| Principal (usar este) | umwqxkggzrpwknptwwju | ✅ LIMPO | 26 tabelas completas |
-| Secundário | aenvpdcwceybzuemczmw | ✅ LIMPO | 9 tabelas simples |
-
-### O Schema do Projeto Principal já tem:
-- `jobs`, `commands`, `job_events` — pipeline core
-- `research_reports`, `research_sources`, `research_branches`, `research_conflicts` — pesquisa
-- `evidence_store` — armazenamento de evidências classificadas
-- `dossiers`, `dossier_sources` — dossiês
-- `presentations`, `studio_outputs` — apresentações e studio
-- `execution_traces`, `execution_checkpoints`, `handoff_log` — rastreabilidade total
-- `quality_gates`, `quality_evaluations` — qualidade
-- `conversation_memory`, `knowledge_base`, `semantic_entities` — memória e inteligência
-- `user_profiles`, `user_preferences` — usuários
-- `directives`, `intent_patterns`, `pipeline_configs` — configuração inteligente
-- `notifications`, `calendar_events`, `tasks` — utilitários
-- RPCs prontos: pop_intent_job, push_intent_job, log_trace, log_quality_eval, etc.
-
-### Conclusão Estratégica
-O banco do Projeto Principal é EXATAMENTE o ORBIT.
-Não precisamos criar schema — precisamos conectar e construir o código.
+| Componente | Status | Detalhe |
+|-----------|--------|---------|
+| Backend Render | 🟢 ONLINE | https://agente-roberth-03.onrender.com |
+| Webhook Telegram | 🟢 ATIVO | /webhook/telegram |
+| Dashboard React | 🟢 ONLINE | https://2na5ew89zd3d.space.minimax.io |
+| GitHub | 🟢 Sincronizado | cfd7cd3 |
+| Supabase | 🟢 Limpo e conectado | umwqxkggzrpwknptwwju (26 tabelas) |
+| Pipeline agentivo | 🟡 Implantado | Fase B completa — 11 camadas básicas |
+| Apresentações HTML | ⏳ Pendente | Fase D |
+| Pesquisa Social/Acadêmica | ⏳ Pendente | Fase D |
+| Evidence Ledger completo | ⏳ Pendente | Fase C |
+| QA com 3 gates | ⏳ Pendente | Fase C |
+| Observabilidade OTel | ⏳ Pendente | Fase F |
+| Governança RBAC | ⏳ Pendente | Fase F |
 
 ---
 
-## FASE A — Fundação do Backend ← PRÓXIMA
+## FASE A — Fundação ✅ CONCLUÍDA
+- Backend Node.js + Fastify online
+- Webhook Telegram ativo
+- Supabase conectado
+- Worker de fila funcional
+
+## FASE B — Pipeline Core ✅ CONCLUÍDA
+- Intake Router (Camada 2)
+- Planner declarativo (Camada 3)
+- Research Agent com web search (Camada 5)
+- Evidence Normalizer básico (Camada 6)
+- Analysis + Synthesizer (Camadas 7-8)
+- Quality Reviewer 5 dimensões (Camada 10)
+- Orchestrator coordenando tudo
+- Memória em 4 níveis (Camada 7)
+- Telemetria estruturada básica
+
+## FASE C — Evidência Robusta ← PRÓXIMA (Prioridade ALTA)
 
 ### Objetivo
-Backend Node.js+TypeScript funcionando, conectado ao Supabase correto,
-recebendo webhook do Telegram, criando jobs e respondendo ao usuário.
+Fechar as 3 lacunas críticas de qualidade identificadas na análise v3.
 
 ### Tarefas
-- [ ] Inicializar projeto Node.js + TypeScript + Fastify
-- [ ] Instalar dependências: @supabase/supabase-js, openai, fastify, zod
-- [ ] Configurar Supabase client (projeto umwqxkggzrpwknptwwju)
-- [ ] Criar endpoint POST /webhook/telegram
-- [ ] Parsear mensagem Telegram → criar command + job no Supabase
-- [ ] Criar endpoint GET /health
-- [ ] Testar: mensagem no Telegram → job aparece no banco
+- [ ] Auth + Rate Limit + Correlation ID no webhook (Camada 1)
+- [ ] Evidence Ledger com hash, dedup, freshness scorer (Camada 6)
+- [ ] Contradiction Detector melhorado
+- [ ] 3 Quality Gates (pré-análise, pós-síntese, pós-artefato)
+- [ ] QA expandido para 9 dimensões (+ recência, latência, custo)
+- [ ] Repair loop por dimensão com agente responsável
 
 ### Entregável
-Sistema recebe mensagem do Telegram e cria job no Supabase.
+Sistema com evidência rastreável e qualidade em 3 pontos do pipeline.
 
 ---
 
-## FASE B — Agente Orquestrador
+## FASE D — Pesquisa Enriquecida + Apresentações
 
 ### Objetivo
-Orquestrador que pega jobs da fila, interpreta intenção e distribui.
+Artefatos mais ricos e pesquisa mais abrangente.
 
 ### Tarefas
-- [ ] Implementar worker que faz poll na fila (pop_intent_job_from_queue)
-- [ ] Implementar Agente Orquestrador com OpenAI Agents SDK
-- [ ] Lógica de match_intent_pattern
-- [ ] Handoff para agentes de pesquisa
-- [ ] Atualizar status do job em tempo real
+- [ ] Social Adapter (Reddit via web_search focado)
+- [ ] Academic Adapter (OpenAlex API)
+- [ ] Artifact Generator: Apresentação HTML premium
+- [ ] Artifact Generator: Card de dashboard JSON
+- [ ] Artifact Registry + Versioning no Supabase Storage
+- [ ] Salvar HTML no Supabase Storage + enviar link no Telegram
 
 ---
 
-## FASE C — Pipeline de Pesquisa e Análise
+## FASE E — Dashboard Completo
 
 ### Objetivo
-Pesquisa completa → análise → dossiê funcionando end-to-end.
+Interface web completa para acompanhar tudo.
 
 ### Tarefas
-- [ ] Agente de Pesquisa Web (web_search nativo OpenAI)
-- [ ] Agente de Análise (cruza evidências)
-- [ ] Agente Criador de Dossiês
-- [ ] Agente Revisor de Qualidade
-- [ ] Pipeline completo: Telegram → Dossiê → resposta no Telegram
+- [ ] Jobs: lista em tempo real (Supabase Realtime)
+- [ ] Dossiês: listagem + leitura + versões
+- [ ] Evidence Graph: visualização de evidências e conflitos
+- [ ] Apresentações: iframe inline + download
+- [ ] Studio: SWOT visual, fontes, traces por job
+- [ ] Quality Reports: scores por dimensão
+- [ ] Cost Monitor: tokens e custo por job
 
 ---
 
-## FASE D — Pesquisa Enriquecida
+## FASE F — Robustez e Observabilidade
 
-- [ ] Agente de Pesquisa Social (Reddit)
-- [ ] Agente de Pesquisa Acadêmica (OpenAlex)
+### Objetivo
+Sistema confiável para uso real em produção.
 
----
-
-## FASE E — Apresentações HTML
-
-- [ ] Agente Criador de Apresentações
-- [ ] Template HTML premium autocontido
-- [ ] Salvar no Supabase Storage
-- [ ] Enviar link no Telegram
-
----
-
-## FASE F — Dashboard Web
-
-- [ ] Inicializar React + Vite + Tailwind
-- [ ] Dashboard: visão geral de jobs
-- [ ] Jobs: lista com status em tempo real (Supabase Realtime)
-- [ ] Dossiês: listagem e leitura
-- [ ] Apresentações: visualização inline
-- [ ] Studio: SWOT, fontes, traces
-
----
-
-## FASE G — Robustez e Produção
-
-- [ ] Dead letter queue para jobs falhos
-- [ ] Retry automático com backoff exponencial
+### Tarefas
+- [ ] pgvector + embeddings automáticos no Supabase
+- [ ] Hybrid search (FTS + semântico) na Knowledge Base
+- [ ] OpenTelemetry completo com correlação transversal
+- [ ] Governança: audit_log estruturado por job_id
+- [ ] RBAC básico (por usuário Telegram)
 - [ ] Alertas de falha via Telegram
-- [ ] Testes de integração
-- [ ] Deploy (backend + frontend)
+- [ ] Retry automático com backoff exponencial
+
+---
+
+## FASE G — Execução Durável (Temporal/LangGraph)
+
+### Objetivo
+Backbone de workflow durável para jobs longos e críticos.
+
+### Tarefas
+- [ ] Avaliar: Temporal vs LangGraph para o perfil do ORBIT
+- [ ] Implementar retomada por checkpoint em falhas
+- [ ] Human-in-the-loop nativo (interrupt → Telegram → resume)
+- [ ] Dead letter queue com replay
 
 ---
 
 ## Próximo Comando
 
-Me diga: **"inicie a Fase A"** e começo agora.
+Me diga: **"inicie a Fase C"** para implementar as lacunas críticas de evidência e qualidade.

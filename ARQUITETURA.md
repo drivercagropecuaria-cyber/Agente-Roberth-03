@@ -1,205 +1,240 @@
-# ARQUITETURA ORBIT 2026 — Revisada e Expandida
-# Atualizado em: 24/03/2026 — incorpora análise crítica de arquitetura avançada
+# ARQUITETURA ORBIT 2026 — Versão Final Completa
+# Atualizado em: 24/03/2026 — incorpora análise arquitetural avançada completa
+# Princípio: "Input → Policy → Plan → Execute → Prove → Reason → Compose → Evaluate → Persist → Observe"
 
-## Diagnóstico da Arquitetura Anterior
+## Diagnóstico Acumulado das Versões Anteriores
 
-A arquitetura v1 era um encadeamento linear de agentes (1→2→3→4→5→6).
-Funcionava como protótipo inteligente, mas tinha limitações críticas para produção:
-
-| Problema | Impacto |
-|---------|---------|
-| Sem classificação de intenção/profundidade | Todo pedido recebe o mesmo ritual completo |
-| Orquestrador misturava controle e execução | Fragilidade, difícil retomar após falha |
-| Pesquisa como bloco único paralelo | Sem contrato de evidência comum, sem normalização |
-| Score único 7/10 | Sem diagnóstico de qual dimensão falhou |
-| Memória plana | Sem episódica, semântica, procedural |
-| Sem interrupção humana nativa | Aprovação não é primitivo, é gambiarra |
-| Logs soltos | Sem rastreabilidade correlacionada por job/agent/evidence |
+| Versão | Problema | Status |
+|--------|---------|--------|
+| v1 | Pipeline linear sem classificação de intenção | Corrigido |
+| v1 | Orquestrador misturava controle e execução | Corrigido |
+| v1 | Score único 7/10 sem diagnóstico por dimensão | Corrigido |
+| v1 | Memória plana | Corrigido |
+| v2 | Sem Auth / Rate Limit / Correlation ID na entrada | A corrigir |
+| v2 | Evidence Ledger sem hash, dedup, freshness | A corrigir |
+| v2 | Sem Artifact Registry + Versioning | A corrigir |
+| v2 | Qualidade em 1 ponto só — precisa de 3 gates | A corrigir |
+| v2 | Observabilidade terminal, não transversal | A corrigir |
+| v2 | Governança implícita, não estrutural | A corrigir |
+| v2 | Sem backbone de execução durável explícito | A corrigir |
 
 ---
 
-## Arquitetura ORBIT 2026 — 11 Camadas Vivas
+## ARQUITETURA ORBIT 2026 — 13 Camadas Vivas
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│  CAMADA 1 — ENTRADA                                              │
-│  Telegram Bot | Dashboard Web | API Pública                      │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-┌──────────────────────────▼───────────────────────────────────────┐
-│  CAMADA 2 — INTAKE ROUTER + POLICY & BUDGET GATE                │
-│  • Classificador de intenção (risco, urgência, profundidade)     │
-│  • Orçamento de tokens/custo por tipo de pedido                  │
-│  • Roteamento: resposta rápida | pesquisa | dossiê | apresentação│
-│  • Bloqueio de ações que requerem aprovação humana               │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-┌──────────────────────────▼───────────────────────────────────────┐
-│  CAMADA 3 — PLANNER / ORQUESTRADOR (Control Plane)              │
-│  Produz plano DECLARATIVO:                                       │
-│  • objetivo, subtarefas, fontes permitidas                       │
-│  • limite de custo, prazo, regras de citação                     │
-│  • critérios de qualidade, condições de parada                   │
-│  • largura adaptativa: 3 ramos (simples) → 24 ramos (dossiê)    │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-┌──────────────────────────▼───────────────────────────────────────┐
-│  CAMADA 4 — WORKFLOW RUNTIME DURÁVEL (Execution Plane)          │
-│  • Executa o plano com filas, checkpoints, retries               │
-│  • Estado persistido no Supabase (execution_checkpoints)         │
-│  • Suporte a pause/resume/retry por checkpoint                   │
-│  • Interrupções humanas nativas (interrupt → Telegram → resume)  │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-┌──────────────────────────▼───────────────────────────────────────┐
-│  CAMADA 5 — RETRIEVAL FABRIC (Fan-out Adaptativo)               │
-│  Adaptadores com contrato comum: query, filters, freshness,      │
-│  source_quality, license, evidence_type                          │
-│  • Web Search (OpenAI nativo)                                    │
-│  • Social (Reddit, fóruns)                                       │
-│  • Acadêmico (OpenAlex, Semantic Scholar)                        │
-│  • Arquivos internos (File Search)                               │
-│  • Knowledge Base interna (busca híbrida: keyword + semântica)  │
-│  • MCP servers remotos (protocolo comum)                         │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-┌──────────────────────────▼───────────────────────────────────────┐
-│  CAMADA 6 — NORMALIZADOR DE EVIDÊNCIAS                          │
-│  Cada resultado → formato canônico:                              │
-│  { claim, source, timestamp, confidence, quote, url,             │
-│    contradictions, topic_tags, evidence_class }                  │
-│  → Grafo de Evidências (conflitos, duplicatas, lacunas)          │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-┌──────────────────────────▼───────────────────────────────────────┐
-│  CAMADA 7 — SYNTHESIZER                                         │
-│  • Tese central, eixos, divergências                             │
-│  • Conclusões com incertezas quantificadas                       │
-│  • SWOT estruturado                                              │
-│  Separado do Artifact Generator: "pensar ≠ formatar"            │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-┌──────────────────────────▼───────────────────────────────────────┐
-│  CAMADA 8 — ARTIFACT GENERATOR                                  │
-│  Do mesmo núcleo de evidência, gera múltiplos formatos:         │
-│  • Dossiê HTML premium                                           │
-│  • Resumo Telegram (4096 chars max)                              │
-│  • Briefing executivo (PDF/texto)                                │
-│  • Dashboard card (JSON estruturado)                             │
-│  • Memória persistente (knowledge_base)                          │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-┌──────────────────────────▼───────────────────────────────────────┐
-│  CAMADA 9 — QA MULTIDIMENSIONAL + REPAIR LOOP                  │
-│  Scorecard por eixo (0-10 cada):                                │
-│  factualidade | cobertura | recência | qualidade_fontes          │
-│  coerência | rastreabilidade | utilidade | custo | latência      │
-│                                                                  │
-│  Repair Loop:                                                    │
-│  factualidade falhou → volta para evidência                      │
-│  cobertura falhou → reabre pesquisa                              │
-│  clareza falhou → reescreve o artefato                           │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-┌──────────────────────────▼───────────────────────────────────────┐
-│  CAMADA 10 — MEMÓRIA EM 4 NÍVEIS                                │
-│  • Execução: estado do job atual (execution_checkpoints)         │
-│  • Episódica: casos anteriores parecidos (conversation_memory)   │
-│  • Semântica: fatos/entidades consolidados (semantic_entities)   │
-│  • Procedural: como resolver tarefas similares (directives)      │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-┌──────────────────────────▼───────────────────────────────────────┐
-│  CAMADA 11 — OBSERVABILIDADE + GOVERNANÇA                       │
-│  • OpenTelemetry: traces, metrics, logs correlacionados          │
-│  • Correlação: job_id, run_id, agent_id, tool_id, evidence_id   │
-│  • Política de execução (fontes, dados, aprovação, orçamento)    │
-│  • Classificação de sensibilidade                                │
-│  • Retenção de artefatos                                         │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-              ┌────────────▼────────────┐
-              │   PERSISTÊNCIA          │
-              │   Supabase (tudo)       │
-              │   26 tabelas + vetores  │
-              │   Storage + pgmq        │
-              └────────────┬────────────┘
-                           │
-              ┌────────────▼────────────┐
-              │   SAÍDA                 │
-              │   Telegram + Dashboard  │
-              │   Cockpit de Evidência  │
-              └─────────────────────────┘
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              CAMADA TRANSVERSAL — OBSERVABILIDADE
+  OpenTelemetry | job_id × run_id × agent_id × tool_id × evidence_id
+  Traces nativos OpenAI SDK | Cost Monitor | Failure Dashboard
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              CAMADA TRANSVERSAL — GOVERNANÇA
+  RBAC | Secrets | Audit Log | Source Allowlist | Approvals | Policy
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ CAMADA 1 — ENTRADA                                                   │
+│ Telegram Bot | Dashboard Web | API Pública | Webhooks               │
+│ + Auth + Rate Limit + Correlation ID + Suporte Multimodal           │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────────────┐
+│ CAMADA 2 — INTAKE E POLÍTICA                                         │
+│ Command Parser → Intent Classifier → Risk Gate → Budget Controller  │
+│ Source Policy → Model Selector → Depth Router                       │
+│                                                                      │
+│ Decide: tipo de tarefa | profundidade | orçamento tokens/custo      │
+│         modelos permitidos | fontes permitidas                       │
+│         necessidade de aprovação humana | exigência de citação       │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────────────┐
+│ CAMADA 3 — PLANO DE CONTROLE (Control Plane)                        │
+│ Planner / Orchestrator (OpenAI Agents SDK)                          │
+│                                                                      │
+│ Produz DeclarativePlan:                                              │
+│ job_id | run_id | intent | required_sources | max_cost              │
+│ max_latency | quality_targets | artifact_types                       │
+│ approval_points | repair_rules                                        │
+│                                                                      │
+│ Modelo Recomendado: o-series como Planner, GPT-4o como Executor     │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────────────┐
+│ CAMADA 4 — EXECUÇÃO DURÁVEL (Execution Plane)                       │
+│ Workflow Runtime | Queue Workers | Retry Engine                     │
+│ Dead-letter Queue | Replay | Checkpoint | Resume                    │
+│ Human Interrupt → Approval → Continue                               │
+│                                                                      │
+│ Stack: Supabase pgmq (atual) → Temporal (produção crítica)          │
+│        LangGraph (alternativa com grafo + human-in-the-loop nativo) │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────────────┐
+│ CAMADA 5 — RETRIEVAL FABRIC                                         │
+│ Adaptadores com contrato comum: query|filters|freshness|quality     │
+│                                                                      │
+│ • Web Adapter (OpenAI web_search_preview)                           │
+│ • Social Adapter (Reddit, fóruns)                                   │
+│ • Academic Adapter (OpenAlex, Semantic Scholar)                     │
+│ • Internal Files Adapter (OpenAI File Search)                       │
+│ • Knowledge Base Adapter (busca híbrida: FTS + pgvector)           │
+│ • MCP Adapter (protocolo padronizado de ferramentas)                │
+│ • External Agent Adapter (A2A quando necessário)                    │
+│                                                                      │
+│ Largura adaptativa: 0 ramos (quick) → 3 (médio) → 12 (dossiê)     │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────────────┐
+│ CAMADA 6 — EVIDÊNCIA                                                │
+│ Evidence Normalizer | Deduplicator | Freshness Scorer               │
+│ Contradiction Detector | Evidence Ledger                            │
+│                                                                      │
+│ Formato canônico:                                                   │
+│ { hash, claim, source, captured_at, confidence, snippet,           │
+│   url, topic, contradictions, license, freshness_score,            │
+│   evidence_class: fact|inference|opinion }                           │
+│                                                                      │
+│ REGRA: nenhuma frase forte entra no dossiê sem evidência estruturada│
+│                                                                      │
+│ Quality Gate 1 — EVIDÊNCIA:                                         │
+│ cobertura ≥ 60% | recência ≥ 7 | diversidade ≥ 3 fontes           │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────────────┐
+│ CAMADA 7 — CONHECIMENTO E MEMÓRIA                                   │
+│ Postgres | pgvector | FTS | Hybrid Search                           │
+│ Artifact Registry | Artifact Versioning                             │
+│                                                                      │
+│ Memória em 4 níveis:                                                │
+│ • Execução: execution_checkpoints (estado do job)                   │
+│ • Episódica: conversation_memory (casos anteriores)                 │
+│ • Semântica: semantic_entities (fatos consolidados)                 │
+│ • Procedural: directives (como resolver tarefas similares)          │
+│                                                                      │
+│ Tabelas-chave: jobs | job_steps | evidence_items | evidence_claims  │
+│ artifacts | artifact_versions | qa_runs | model_runs | tool_calls   │
+│ memories_semantic | memories_episodic | approvals | audit_log       │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────────────┐
+│ CAMADA 8 — SÍNTESE (Synthesis Engine)                               │
+│ Cross-Evidence Reasoner | Thesis Builder | Uncertainty Estimator    │
+│                                                                      │
+│ Detecta: convergências | lacunas | divergências entre fontes        │
+│ Estima: confiança por afirmação                                      │
+│ Produz: verdade operacional do job (tese central + eixos)           │
+│                                                                      │
+│ Quality Gate 2 — SÍNTESE:                                           │
+│ factualidade ≥ 7 | coerência ≥ 7 | rastreabilidade ≥ 7            │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────────────┐
+│ CAMADA 9 — ARTEFATOS (Artifact Generator)                           │
+│ Consome a mesma síntese para gerar múltiplos formatos:              │
+│                                                                      │
+│ • Dossiê HTML premium (autocontido)                                 │
+│ • Resumo Telegram (≤ 900 chars)                                     │
+│ • Briefing executivo (texto estruturado)                            │
+│ • Dashboard card (JSON estruturado)                                 │
+│ • SWOT visual                                                       │
+│ • Memória persistente (knowledge_base)                              │
+│                                                                      │
+│ → Artifact Registry: hash | versão | score | fontes | custo        │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────────────┐
+│ CAMADA 10 — QUALIDADE MULTIDIMENSIONAL                              │
+│                                                                      │
+│ Quality Gate 3 — ARTEFATO:                                          │
+│ Scorecard por eixo (0-10):                                          │
+│ factualidade | cobertura | recência | qualidade_fontes              │
+│ coerência | rastreabilidade | utilidade | custo | latência          │
+│                                                                      │
+│ Repair Loop por dimensão:                                           │
+│ factualidade falhou → volta para Evidência                          │
+│ cobertura falhou → reabre Pesquisa                                  │
+│ clareza falhou → reescreve Artefato                                 │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────────────┐
+│ CAMADA 11 — PERSISTÊNCIA                                            │
+│ Supabase PostgreSQL | Storage | pgmq | Realtime                    │
+│ pgvector | Hybrid Search | Embeddings Automáticos                   │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────────────┐
+│ CAMADA 12 — ENTREGA                                                 │
+│ Persistência do artefato final + versão + score + custo + fontes   │
+│ Notificação (Telegram) | Dashboard update (Realtime)                │
+│ Opção de reabrir job | Replay | Human feedback                      │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────────────┐
+│ CAMADA 13 — DASHBOARD / STUDIO / COCKPIT DE EVIDÊNCIA               │
+│ Jobs | Traces | Evidence Graph | SWOT | Quality Reports             │
+│ Cost Monitor | Agent Performance | Realtime Updates                 │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## O que Muda no Código — Impacto por Camada
+## Stack Final Recomendada
 
-### Camada 2 — Intake Router (NOVO)
-Arquivo: `src/services/intake-router.ts`
-- Classificar intenção via LLM leve (gpt-4o-mini)
-- Decidir: quick_answer | research | dossier | presentation
-- Definir: max_tokens, max_sources, max_branches, deadline
-
-### Camada 3 — Planner separado do Orquestrador (REFATORAR)
-Arquivo: `src/agents/planner.ts` (separado de orchestrator.ts)
-- Output: DeclarativePlan (JSON estruturado com regras)
-- Orquestrador passa a ser executor do plano, não criador
-
-### Camada 5 — Retrieval Fabric com contrato comum (EXPANDIR)
-Arquivo: `src/retrieval/` (pasta nova)
-- `adapters/web.ts`, `adapters/social.ts`, `adapters/scholarly.ts`
-- `adapters/knowledge-base.ts` (busca híbrida interna)
-- Contrato: `EvidenceSource { query, url, snippet, quality, license, freshness }`
-
-### Camada 6 — Evidence Normalizer (NOVO)
-Arquivo: `src/services/evidence-normalizer.ts`
-- Converter qualquer fonte para `EvidenceClaim`
-- Detectar conflitos, duplicatas e lacunas
-- Persistir em `evidence_store`
-
-### Camada 7+8 — Synthesizer separado do Artifact Generator (REFATORAR)
-- `src/agents/synthesizer.ts` → produz SynthesisCore
-- `src/agents/artifact-generator.ts` → transforma em múltiplos formatos
-
-### Camada 9 — QA Multidimensional (EXPANDIR)
-Arquivo: `src/agents/quality-reviewer.ts` (expandir)
-- 9 dimensões em vez de score único
-- Repair loop por dimensão com agente responsável
-
-### Camada 10 — Memória em 4 Níveis (USAR SCHEMA)
-- Já existe no Supabase: execution_checkpoints, conversation_memory, semantic_entities, directives
-- Implementar serviço de memória: `src/services/memory.ts`
-
-### Camada 11 — Observabilidade (NOVO)
-Arquivo: `src/utils/telemetry.ts`
-- Wrapper sobre console.log atual
-- Adicionar correlação por job_id/agent/step
-- Preparado para exportar OTel no futuro
+| Componente | Tecnologia | Justificativa |
+|-----------|-----------|---------------|
+| Interface de agentes | OpenAI Agents SDK | Tools, handoffs, traces nativos |
+| Ferramentas e integrações | MCP | Protocolo padrão, segurança, progresso |
+| Interoperabilidade entre agentes | A2A | Apenas quando necessário |
+| Fila e mensagens | Supabase pgmq (atual) | Durável, sem infra extra |
+| Execução durável (futuro) | Temporal | Máxima confiabilidade em produção |
+| Alternativa de execução | LangGraph | Grafo + human-in-the-loop nativo |
+| Banco / storage / realtime | Supabase | Único sistema para tudo |
+| Busca e memória | Postgres FTS + pgvector + hybrid search | Embeddings automáticos |
+| Telemetria | OpenTelemetry + SDK traces | Correlação job/agent/tool/evidence |
+| Avaliação | Scorecards por eixo + evals estruturados | 3 gates, 9 dimensões |
+| Governança | Policies + audit + approvals + RBAC | Transversal, não terminal |
 
 ---
 
-## O que SE MANTÉM (stack atual é sólido)
+## Mapeamento Código → Camada
 
-| Componente | Decisão |
-|-----------|---------|
-| Supabase | ✅ Mantém — banco, storage, pgmq, vetores, realtime |
-| Fastify | ✅ Mantém — webhook, REST API |
-| OpenAI Agents SDK | ✅ Mantém — agentes, handoffs, tools |
-| Telegram | ✅ Mantém — entrada principal |
-| React + Tailwind | ✅ Mantém — dashboard |
+| Arquivo | Camada | Status |
+|---------|--------|--------|
+| api/webhook.ts | 1 — Entrada | ✅ Implementado |
+| services/intake-router.ts | 2 — Política | ✅ Implementado |
+| agents/planner.ts | 3 — Controle | ✅ Implementado |
+| queue/worker.ts | 4 — Execução | ✅ Básico (sem Temporal) |
+| agents/research.ts | 5 — Retrieval | ✅ Web adapter básico |
+| services/evidence-normalizer.ts | 6 — Evidência | ✅ Implementado |
+| services/memory.ts | 7 — Memória | ✅ 4 níveis implementados |
+| agents/analysis.ts | 8 — Síntese | ✅ Implementado |
+| agents/synthesizer.ts | 8+ — Síntese | ✅ Implementado |
+| agents/quality-reviewer.ts | 10 — Qualidade | ✅ 5 dimensões (expandir para 9) |
+| utils/telemetry.ts | 13 (transversal) | ✅ Básico (sem OTel completo) |
+| agents/orchestrator.ts | 3+4 | ✅ Coordena todas as camadas |
+
+## Lacunas a Implementar nas Próximas Fases
+
+| Lacuna | Fase | Prioridade |
+|--------|------|-----------|
+| Auth + Rate Limit + Correlation ID na entrada | C | Alta |
+| Evidence Ledger com hash + dedup + freshness | C | Alta |
+| Artifact Registry + Versioning | D | Média |
+| 3 Quality Gates (evidência, síntese, artefato) | C | Alta |
+| Observabilidade transversal (OTel completo) | F | Média |
+| Governança: RBAC + audit_log + approvals | F | Média |
+| Backbone durável (Temporal ou LangGraph) | G | Alta |
+| Social Adapter (Reddit) | D | Média |
+| Academic Adapter (OpenAlex) | D | Média |
+| pgvector + hybrid search | E | Média |
+| Apresentações HTML premium | D | Alta |
 
 ---
 
-## Impacto no Plano de Implementação
+## Princípio Final
 
-A Fase B incorpora Camadas 2, 3, 4, 5 da nova arquitetura.
-As Fases C e D constroem Camadas 6, 7, 8 e 9.
-A Fase F constrói Camadas 10 e 11.
-
----
-
-## Princípio Adotado
-
-> "Menos agentes falando entre si, mais civilização de agentes operando sobre regras, memória e prova."
+> **O sistema não precisa de mais agentes. Precisa de mais civilização.**
+> Mais contrato. Mais memória. Mais prova. Mais durabilidade. Mais avaliação. Mais governo interno.
+>
+> **Input → Policy → Plan → Execute → Prove → Reason → Compose → Evaluate → Persist → Observe**

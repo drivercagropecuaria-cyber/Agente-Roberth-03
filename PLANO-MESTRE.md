@@ -91,23 +91,30 @@ Interface web completa para acompanhar tudo.
 
 ---
 
-## FASE F — Robustez e Observabilidade ← PRÓXIMA
+## FASE F — Robustez e Observabilidade ✅ CONCLUÍDA
 
 ### Objetivo
 Sistema confiável para uso real em produção.
 
 ### Tarefas
-- [ ] pgvector + embeddings automáticos no Supabase
-- [ ] Hybrid search (FTS + semântico) na Knowledge Base
-- [ ] OpenTelemetry completo com correlação transversal
-- [ ] Governança: audit_log estruturado por job_id
-- [ ] RBAC básico (por usuário Telegram)
-- [ ] Alertas de falha via Telegram
-- [ ] Retry automático com backoff exponencial
+- [x] pgvector + embeddings automáticos (text-embedding-3-small via OpenAI)
+- [x] Hybrid search: FTS + semântico (cosine similarity) com RRF Fusion
+- [x] Knowledge Base: indexação automática pós-job + persistência na KB
+- [x] OpenTelemetry estruturado: trace_id × span_id × job_id × agent correlacionados
+- [x] Governança: RBAC por role (admin/analyst/viewer/blocked) + cache TTL 5min
+- [x] Audit Log estruturado por job_id, telegram_id, action, result
+- [x] Source Policy: controle de acesso a fontes por role
+- [x] Alertas de falha via Telegram: job falho, taxa de erro, QA baixo, custo alto
+- [x] Retry com backoff exponencial: 1s → 2s → 4s → ... → 32s (max 3 tentativas)
+- [x] Monitor periódico de métricas: checkMetricsAndAlert a cada 10 polls
+- [x] Webhook integrado com RBAC (governance check pré-job)
+
+### Commit
+- `d01590e` — 967 linhas novas em 8 arquivos
 
 ---
 
-## FASE G — Execução Durável (Temporal/LangGraph)
+## FASE G — Execução Durável (Temporal/LangGraph) ← PRÓXIMA
 
 ### Objetivo
 Backbone de workflow durável para jobs longos e críticos.

@@ -37,25 +37,25 @@
 - Memória em 4 níveis (Camada 7)
 - Telemetria estruturada básica
 
-## FASE C — Evidência Robusta ← PRÓXIMA (Prioridade ALTA)
+## FASE C — Evidência Robusta ✅ CONCLUÍDA
 
 ### Objetivo
 Fechar as 3 lacunas críticas de qualidade identificadas na análise v3.
 
 ### Tarefas
-- [ ] Auth + Rate Limit + Correlation ID no webhook (Camada 1)
-- [ ] Evidence Ledger com hash, dedup, freshness scorer (Camada 6)
-- [ ] Contradiction Detector melhorado
-- [ ] 3 Quality Gates (pré-análise, pós-síntese, pós-artefato)
-- [ ] QA expandido para 9 dimensões (+ recência, latência, custo)
-- [ ] Repair loop por dimensão com agente responsável
+- [x] Auth + Rate Limit + Correlation ID no webhook (Camada 1)
+- [x] Evidence Ledger com hash, dedup, freshness scorer (Camada 6)
+- [x] Contradiction Detector melhorado
+- [x] 3 Quality Gates (evidência, síntese, artefato)
+- [x] QA expandido para 9 dimensões (+ recência, latência, custo)
+- [x] Repair loop por dimensão (ampliar pesquisa, refinar síntese)
 
 ### Entregável
 Sistema com evidência rastreável e qualidade em 3 pontos do pipeline.
 
 ---
 
-## FASE D — Pesquisa Enriquecida + Apresentações
+## FASE D — Pesquisa Enriquecida + Apresentações ← PRÓXIMA (Prioridade ALTA)
 
 ### Objetivo
 Artefatos mais ricos e pesquisa mais abrangente.

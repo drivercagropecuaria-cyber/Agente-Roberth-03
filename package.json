@@ -1,12 +1,10 @@
 {
   "name": "orbit-monorepo",
   "version": "1.0.0",
-  "description": "ORBIT — Plataforma de Inteligência Aplicada",
+  "description": "ORBIT Platform",
   "scripts": {
-    "build": "cd backend && npm install",
+    "postinstall": "cd backend && npm install",
     "start": "node start.js"
   },
-  "engines": {
-    "node": ">=20.0.0"
-  }
+  "engines": { "node": ">=20.0.0" }
 }

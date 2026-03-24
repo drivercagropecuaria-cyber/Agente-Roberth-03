@@ -5,6 +5,8 @@ services:
     rootDir: backend
     buildCommand: npm install
     startCommand: npx tsx src/index.ts
+    healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
@@ -24,5 +26,3 @@ services:
         sync: false
       - key: WEBHOOK_URL
         sync: false
-    healthCheckPath: /health
-    autoDeploy: true

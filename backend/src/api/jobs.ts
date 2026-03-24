@@ -1,67 +1,77 @@
+/**
+ * JOBS API — REST endpoints para jobs, DLQ e workflow status — Fase G
+ */
 import { FastifyInstance } from 'fastify'
 import { supabase } from '../db/client'
+import { listDLQ, replayJob, discardFromDLQ, getDLQStats } from '../workflow/dead-letter'
+import { loadCheckpoint } from '../workflow/engine'
 
 export async function jobsRoutes(app: FastifyInstance) {
-  // Listar todos os jobs
-  app.get('/', async (_req, reply) => {
-    const { data, error } = await supabase.rpc('get_recent_jobs', { p_limit: 50 })
-    if (error) {
-      // Fallback se o RPC não existir
-      const { data: rows, error: err2 } = await supabase
-        .from('jobs')
-        .select('*, commands(payload)')
-        .order('created_at', { ascending: false })
-        .limit(50)
-      if (err2) return reply.status(500).send({ error: err2.message })
-      return reply.send(rows)
-    }
+  // Listar jobs
+  app.get('/jobs', async (req, reply) => {
+    const { limit = '20', status } = req.query as Record<string, string>
+    let q = supabase.from('jobs').select('*').order('created_at', { ascending: false }).limit(parseInt(limit))
+    if (status) q = q.eq('status', status)
+    const { data, error } = await q
+    if (error) return reply.status(500).send({ error: error.message })
     return reply.send(data)
   })
 
-  // Buscar job por ID com detalhes
-  app.get<{ Params: { id: string } }>('/:id', async (req, reply) => {
-    const { id } = req.params
-
-    const { data: job, error } = await supabase
-      .from('jobs')
-      .select('*, commands(payload)')
-      .eq('id', id)
-      .single()
-
-    if (error) return reply.status(404).send({ error: 'Job não encontrado' })
-
-    // Buscar traces deste job
-    const { data: traces } = await supabase
-      .from('execution_traces')
-      .select('*')
-      .eq('job_id', id)
-      .order('created_at', { ascending: true })
-
-    // Buscar eventos
-    const { data: events } = await supabase
-      .from('job_events')
-      .select('*')
-      .eq('job_id', id)
-      .order('created_at', { ascending: true })
-
-    return reply.send({ ...job, traces, events })
+  // Detalhe de um job
+  app.get('/jobs/:id', async (req, reply) => {
+    const { id } = req.params as { id: string }
+    const [{ data: job }, { data: artifacts }, { data: evals }] = await Promise.all([
+      supabase.from('jobs').select('*').eq('id', id).single(),
+      supabase.from('artifacts').select('*').eq('job_id', id).order('created_at', { ascending: false }),
+      supabase.from('quality_evaluations').select('*').eq('entity_id', id)
+    ])
+    if (!job) return reply.status(404).send({ error: 'Job não encontrado' })
+    const checkpoint = await loadCheckpoint(id)
+    return reply.send({ ...job, artifacts: artifacts || [], quality_evaluations: evals || [], checkpoint })
   })
 
-  // Estatísticas do dashboard
-  app.get('/stats/dashboard', async (_req, reply) => {
-    const { data, error } = await supabase.rpc('get_dashboard_stats')
-    if (error) {
-      // Fallback manual
-      const { data: jobs } = await supabase.from('jobs').select('status')
-      const stats = {
-        total: jobs?.length || 0,
-        pending: jobs?.filter(j => j.status === 'pending').length || 0,
-        running: jobs?.filter(j => j.status === 'running').length || 0,
-        completed: jobs?.filter(j => j.status === 'completed').length || 0,
-        failed: jobs?.filter(j => j.status === 'failed').length || 0
-      }
-      return reply.send(stats)
-    }
-    return reply.send(data)
+  // Checkpoint de um job
+  app.get('/jobs/:id/checkpoint', async (req, reply) => {
+    const { id } = req.params as { id: string }
+    const cp = await loadCheckpoint(id)
+    return reply.send({ job_id: id, checkpoint: cp })
+  })
+
+  // DLQ — listar
+  app.get('/dlq', async (_req, reply) => {
+    const [entries, stats] = await Promise.all([listDLQ(50), getDLQStats()])
+    return reply.send({ stats, entries })
+  })
+
+  // DLQ — replay de um job
+  app.post('/dlq/:id/replay', async (req, reply) => {
+    const { id } = req.params as { id: string }
+    const result = await replayJob(id)
+    return reply.send(result)
+  })
+
+  // DLQ — descartar job da fila
+  app.delete('/dlq/:id', async (req, reply) => {
+    const { id } = req.params as { id: string }
+    const ok = await discardFromDLQ(id)
+    return reply.send({ success: ok })
+  })
+
+  // Health check detalhado
+  app.get('/health/detailed', async (_req, reply) => {
+    const { data: recentJobs } = await supabase
+      .from('jobs').select('status').order('created_at', { ascending: false }).limit(20)
+    const counts: Record<string, number> = { pending: 0, running: 0, completed: 0, failed: 0 }
+    ;(recentJobs || []).forEach((j: any) => { counts[j.status] = (counts[j.status] || 0) + 1 })
+    const dlqStats = await getDLQStats()
+    return reply.send({
+      status: 'ok',
+      version: process.env.AGENT_VERSION || '2026.G',
+      uptime_s: Math.round(process.uptime()),
+      memory_mb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+      recent_jobs: counts,
+      dlq: dlqStats,
+      timestamp: new Date().toISOString()
+    })
   })
 }

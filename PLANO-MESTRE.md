@@ -114,19 +114,36 @@ Sistema confiável para uso real em produção.
 
 ---
 
-## FASE G — Execução Durável (Temporal/LangGraph) ← PRÓXIMA
+## FASE G — Execução Durável ✅ CONCLUÍDA
 
-### Objetivo
-Backbone de workflow durável para jobs longos e críticos.
+### Decisão Arquitetural
+Temporal/LangGraph não foram adotados — adicionariam infra pesada (Go server, banco separado) sem benefício real para o perfil ORBIT. Implementamos **Durable Workflow Engine nativo** sobre Supabase, com a mesma semântica de durabilidade, zero infra adicional.
 
 ### Tarefas
-- [ ] Avaliar: Temporal vs LangGraph para o perfil do ORBIT
-- [ ] Implementar retomada por checkpoint em falhas
-- [ ] Human-in-the-loop nativo (interrupt → Telegram → resume)
-- [ ] Dead letter queue com replay
+- [x] Avaliação: Temporal vs LangGraph vs Nativo → Nativo venceu (zero infra, mesmo Supabase)
+- [x] Workflow Engine: steps declarativos com checkpoint após cada step
+- [x] Retomada automática: recarrega checkpoint e continua do step seguinte ao último OK
+- [x] 11 steps declarativos: load_command → intake → quick_answer → planner → retrieval → evidence → analysis → synthesis → qa → artifacts → delivery
+- [x] Timeout por step: cada step tem timeout configurável (30–120s)
+- [x] Rollback (compensate): steps anteriores podem ser revertidos se passo crítico falhar
+- [x] Human-in-the-loop: pause → token de aprovação → Telegram → resume
+- [x] Comandos Telegram: `OK TOKEN` / `CANCELAR TOKEN` / `/status` / `/replay <job_id>`
+- [x] Dead Letter Queue: jobs falhos definitivos persistidos + inspecionáveis
+- [x] Replay via API: `POST /dlq/:id/replay` e via Telegram `/replay <job_id>`
+- [x] API `/dlq`, `/dlq/:id/replay`, `/dlq/:id` (DELETE), `/jobs/:id/checkpoint`
+- [x] Endpoint `/health/detailed` com stats de jobs + DLQ + memória + uptime
 
----
+### Commit
+- `214dce9` — 1072 linhas novas em 7 arquivos
 
-## Próximo Comando
+### Sistema completo: Fases A → G
 
-Me diga: **"inicie a Fase C"** para implementar as lacunas críticas de evidência e qualidade.
+| Fase | Entrega | Status |
+|------|---------|--------|
+| A | Backend + Webhook + Supabase + GitHub | ✅ |
+| B | Pipeline agentivo 11 camadas | ✅ |
+| C | Evidence Ledger + 3 Quality Gates + QA 9 dim | ✅ |
+| D | Retrieval Fabric (Social+Academic) + HTML Premium + Artifact Registry | ✅ |
+| E | Dashboard React completo (5 páginas + Realtime) | ✅ |
+| F | pgvector + Hybrid Search + RBAC + OTel + Alertas + Backoff | ✅ |
+| G | Durable Workflow Engine + Human-in-the-loop + DLQ + Replay | ✅ |

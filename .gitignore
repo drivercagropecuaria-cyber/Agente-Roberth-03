@@ -1,0 +1,27 @@
+# Dependências
+node_modules/
+dist/
+.next/
+
+# Ambiente
+.env
+.env.local
+.env.production
+
+# Build
+*.js.map
+*.d.ts
+
+# Sistema
+.DS_Store
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editores
+.vscode/
+.idea/
+
+# Temporários
+*.tmp
+*.bak

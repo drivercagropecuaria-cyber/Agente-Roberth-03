@@ -55,22 +55,22 @@ Sistema com evidência rastreável e qualidade em 3 pontos do pipeline.
 
 ---
 
-## FASE D — Pesquisa Enriquecida + Apresentações ← PRÓXIMA (Prioridade ALTA)
+## FASE D — Pesquisa Enriquecida + Apresentações ✅ CONCLUÍDA
 
 ### Objetivo
 Artefatos mais ricos e pesquisa mais abrangente.
 
 ### Tarefas
-- [ ] Social Adapter (Reddit via web_search focado)
-- [ ] Academic Adapter (OpenAlex API)
-- [ ] Artifact Generator: Apresentação HTML premium
-- [ ] Artifact Generator: Card de dashboard JSON
-- [ ] Artifact Registry + Versioning no Supabase Storage
-- [ ] Salvar HTML no Supabase Storage + enviar link no Telegram
+- [x] Social Adapter (Reddit + fóruns via web_search)
+- [x] Academic Adapter (OpenAlex + Google Scholar fallback)
+- [x] Artifact Generator: HTML Premium autocontido (dark mode, SWOT, QA scorecard, fontes)
+- [x] Artifact Generator: Card de dashboard JSON estruturado
+- [x] Artifact Registry com hash SHA-256 + versioning + Storage
+- [x] HTML salvo no Storage + link enviado no Telegram
 
 ---
 
-## FASE E — Dashboard Completo
+## FASE E — Dashboard Completo ← PRÓXIMA (Prioridade ALTA)
 
 ### Objetivo
 Interface web completa para acompanhar tudo.

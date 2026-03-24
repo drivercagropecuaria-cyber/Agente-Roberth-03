@@ -7,7 +7,7 @@
 |-----------|--------|---------|
 | Backend Render | 🟢 ONLINE | https://agente-roberth-03.onrender.com |
 | Webhook Telegram | 🟢 ATIVO | /webhook/telegram |
-| Dashboard React | 🟢 ONLINE | https://2na5ew89zd3d.space.minimax.io |
+| Dashboard React v2 | 🟢 ONLINE (Fase E) | https://9ynuhgazlzyw.space.minimax.io |
 | GitHub | 🟢 Sincronizado | cfd7cd3 |
 | Supabase | 🟢 Limpo e conectado | umwqxkggzrpwknptwwju (26 tabelas) |
 | Pipeline agentivo | 🟡 Implantado | Fase B completa — 11 camadas básicas |
@@ -70,23 +70,28 @@ Artefatos mais ricos e pesquisa mais abrangente.
 
 ---
 
-## FASE E — Dashboard Completo ← PRÓXIMA (Prioridade ALTA)
+## FASE E — Dashboard Completo ✅ CONCLUÍDA
 
 ### Objetivo
 Interface web completa para acompanhar tudo.
 
 ### Tarefas
-- [ ] Jobs: lista em tempo real (Supabase Realtime)
-- [ ] Dossiês: listagem + leitura + versões
-- [ ] Evidence Graph: visualização de evidências e conflitos
-- [ ] Apresentações: iframe inline + download
-- [ ] Studio: SWOT visual, fontes, traces por job
-- [ ] Quality Reports: scores por dimensão
-- [ ] Cost Monitor: tokens e custo por job
+- [x] Jobs: lista em tempo real (Supabase Realtime + filtros + stats)
+- [x] Dossiês: listagem completa + leitura + iframe HTML + fontes (Web/Social/Acadêmico)
+- [x] Evidence Graph: ledger completo, distribuição de confiança por classe
+- [x] Apresentações: iframe inline + link público Storage + download
+- [x] Studio: QA radar por dimensão, tendência de score, detalhe por avaliação
+- [x] Quality Reports: scores por dimensão integrados no Studio
+- [x] Cost Monitor: tokens por agente, custo estimado, latência, tendência
+
+### Deploy
+- URL: https://9ynuhgazlzyw.space.minimax.io
+- Páginas: Jobs | Dossiês | Evidências | Studio | Qualidade
+- Stack: React 18 + TypeScript + Tailwind + Recharts + Supabase Realtime
 
 ---
 
-## FASE F — Robustez e Observabilidade
+## FASE F — Robustez e Observabilidade ← PRÓXIMA
 
 ### Objetivo
 Sistema confiável para uso real em produção.

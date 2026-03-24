@@ -15,6 +15,8 @@ import { buildHtmlPresentation, buildDashboardCard, buildTelegramSummary } from 
 import { registerArtifact } from '../services/artifact-registry'
 import { saveEpisodicMemory } from '../services/memory'
 import { tel, setJobContext } from '../utils/telemetry'
+import { indexResearchSources, persistKnowledgeItem } from '../services/embeddings'
+import { startTrace } from '../utils/otel'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -31,6 +33,7 @@ export async function orchestrate(job: any) {
   const { id: jobId, command_id, chat_id } = job
   setJobContext(jobId)
   const t0 = Date.now()
+  const traceId = startTrace(jobId)
   let totalTokens = 0
 
   const { data: cmd } = await supabase.from('commands').select('payload,user_id').eq('id', command_id).single()
@@ -159,6 +162,14 @@ export async function orchestrate(job: any) {
 
   if (cmd.user_id && telegramId) {
     await saveEpisodicMemory({ userProfileId: cmd.user_id, telegramId, role: 'assistant', content: telegramSummary.substring(0, 500), intent: intake.intent, jobId })
+  }
+
+  // Indexar fontes na Knowledge Base (async, não bloqueia)
+  indexResearchSources({ jobId, sources: research.sources || [] }).catch(() => {})
+
+  // Persistir síntese na KB
+  if (finalSynth.executive_summary) {
+    persistKnowledgeItem({ jobId, title: text.substring(0, 100), content: finalSynth.executive_summary, sourceType: 'internal', category: 'synthesis' }).catch(() => {})
   }
 
   await logTrace({ jobId, agentName: 'orchestrator', step: 'completed', outputSummary: `qa=${fullQA.score_geral} src=${(research.sources || []).length} html=${!!htmlReg.public_url}`, durationMs: Date.now() - t0 })
